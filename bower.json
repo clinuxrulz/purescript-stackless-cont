@@ -12,6 +12,7 @@
   ],
   "dependencies": {
     "purescript-console": "^0.1.0",
-    "purescript-freet": "~0.3.1"
+    "purescript-freet": "~0.3.1",
+    "purescript-identity": "~0.4.1"
   }
 }
