@@ -1,6 +1,7 @@
 module Control.Monad.Suspender.Trans
   ( SuspenderF(..)
   , SuspenderT()
+  , unSuspenderT
   , suspend
   ) where
 
