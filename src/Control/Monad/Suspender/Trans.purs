@@ -3,11 +3,14 @@ module Control.Monad.Suspender.Trans
   , SuspenderT()
   , unSuspenderT
   , suspend
+  , runSuspenderT
   ) where
 
 import Prelude
+import Control.Bind
 import Control.Monad.Free.Trans
 import Control.Monad.Suspender.Class (MonadSuspender)
+import Control.Monad.Rec.Class
 
 data SuspenderF (m :: * -> *) a
   = Suspend (Unit -> SuspenderT m a)
@@ -22,6 +25,12 @@ unSuspenderT (SuspenderT a) = a
 
 suspend :: forall m a. (Monad m) => (Unit -> SuspenderT m a) -> SuspenderT m a
 suspend f = SuspenderT $ liftFreeT (Suspend f)
+
+runSuspenderT :: forall m a. (MonadRec m) => SuspenderT m a -> m a
+runSuspenderT (SuspenderT a) = runFreeT go a
+  where
+    go :: (SuspenderF m) (FreeT (SuspenderF m) m a) -> m (FreeT (SuspenderF m) m a)
+    go (Suspend f) = pure $ join $ unSuspenderT $ f unit
 
 instance functorSuspenderT :: (Monad m) => Functor (SuspenderT m) where
   map f = SuspenderT <<< (map f) <<< unSuspenderT
