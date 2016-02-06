@@ -11,6 +11,7 @@ import Control.Bind
 import Control.Monad.Free.Trans
 import Control.Monad.Suspender.Class (MonadSuspender)
 import Control.Monad.Rec.Class
+import Control.Monad.Trans
 
 data SuspenderF (m :: * -> *) a
   = Suspend (Unit -> SuspenderT m a)
@@ -45,6 +46,9 @@ instance bindSuspenderT :: (Monad m) => Bind (SuspenderT m) where
   bind (SuspenderT m) f = SuspenderT $ m >>= (unSuspenderT <<< f)
 
 instance monadSuspenderT :: (Monad m) => Monad (SuspenderT m)
+
+instance monadTransSuspenderT :: MonadTrans SuspenderT where
+  lift m = SuspenderT $ lift m
 
 instance monadSuspenderSuspenderT :: (Monad m) => MonadSuspender (SuspenderT m) where
   suspend = suspend

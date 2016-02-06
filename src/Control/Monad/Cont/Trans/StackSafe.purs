@@ -4,37 +4,38 @@ module Control.Monad.Cont.Trans.StackSafe
   ) where
 
 import Prelude
-import Control.Monad.Suspender.Class
+import Control.Monad.Suspender.Trans
 import Control.Monad.Cont.Class
 import Control.Monad.Rec.Class
+import Control.Monad.Trans
 import Data.Either
 
-newtype ContT r m a = ContT ((a -> m r) -> m r)
+newtype ContT r m a = ContT ((a -> SuspenderT m r) -> SuspenderT m r)
 
-runContT :: forall r m a. ContT r m a -> (a -> m r) -> m r
-runContT (ContT ca) k = ca k
+runContT :: forall r m a. (MonadRec m) => ContT r m a -> (a -> m r) -> m r
+runContT (ContT ca) k = runSuspenderT $ ca (\a -> lift $ k a)
 
-instance monadContContT :: (MonadSuspender m) => MonadCont (ContT r m) where
+instance monadContContT :: (Monad m) => MonadCont (ContT r m) where
   callCC f = ContT (\k -> suspend (\_ -> case f (\a -> ContT (\_ -> suspend (\_ -> k a))) of ContT k2 -> k2 k))
 
-instance functorContT :: (MonadSuspender m) => Functor (ContT r m) where
+instance functorContT :: (Monad m) => Functor (ContT r m) where
   map f (ContT ca) = ContT (\k -> suspend (\_ -> ca (\a -> suspend (\_ -> k $ f a))))
 
-instance applyContT :: (MonadSuspender m) => Apply (ContT r m) where
+instance applyContT :: (Monad m) => Apply (ContT r m) where
   apply (ContT cf) (ContT ca) = ContT (\k -> suspend (\_ -> cf (\f -> suspend (\_ -> ca (\a -> suspend (\_ -> k $ f a))))))
 
-instance applicativeContT :: (MonadSuspender m) => Applicative (ContT r m) where
+instance applicativeContT :: (Monad m) => Applicative (ContT r m) where
   pure a = ContT (\k -> suspend (\_ -> k a))
 
-instance bindContT :: (MonadSuspender m) => Bind (ContT r m) where
+instance bindContT :: (Monad m) => Bind (ContT r m) where
   bind (ContT ca) f = ContT (\k -> suspend (\_ -> ca (\a -> suspend (\_ -> case f a of ContT k2 -> k2 k))))
 
-instance monadContT :: (MonadSuspender m) => Monad (ContT r m)
+instance monadContT :: (Monad m) => Monad (ContT r m)
 
-liftSuspender :: forall r m a. (MonadSuspender m) => m a -> ContT r m a
-liftSuspender m = ContT (m >>=)
+instance monadTransContT :: MonadTrans (ContT r) where
+  lift m = ContT ((lift m) >>=)
 
-instance monadRecContT :: (MonadSuspender m) => MonadRec (ContT r m) where
+instance monadRecContT :: (Monad m) => MonadRec (ContT r m) where
   tailRecM f a =
     f a >>= (\x -> ContT (\k ->
       suspend (\_ ->
