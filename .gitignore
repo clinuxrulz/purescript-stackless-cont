@@ -1,7 +1,7 @@
-/.*
+.*
 !/.gitignore
 !/.travis.yml
-/bower_components/
-/node_modules/
-/output/
-/tmp/
+bower_components/
+node_modules/
+output/
+tmp/

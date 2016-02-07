@@ -1,0 +1,19 @@
+{
+  "name": "Benchmark",
+  "version": "1.0.0",
+  "moduleType": [
+    "node"
+  ],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "dependencies": {
+    "purescript-console": "^0.1.0",
+    "purescript-cont-stack-safe": "../#*",
+    "purescript-free": "~0.9.1",
+    "purescript-benchotron": "~3.0.4"
+  }
+}
