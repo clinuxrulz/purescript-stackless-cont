@@ -4,16 +4,35 @@ module Control.Monad.Cont.Trans.StackSafe
   ) where
 
 import Prelude
-import Control.Monad.Suspender.Trans
 import Control.Monad.Cont.Class
 import Control.Monad.Rec.Class
 import Control.Monad.Trans
 import Data.Either
 
-newtype ContT r m a = ContT ((a -> SuspenderT m r) -> SuspenderT m r)
+newtype Suspender m a = Suspender (m (Either (Unit -> Suspender m a) a))
+
+unSuspender :: forall m a. Suspender m a -> m (Either (Unit -> Suspender m a) a)
+unSuspender (Suspender a) = a
+
+suspend :: forall m a. (Applicative m) => (Unit -> Suspender m a) -> Suspender m a
+suspend f = Suspender $ pure $ Left f
+
+done :: forall m a. (Applicative m) => a -> Suspender m a
+done a = Suspender $ pure $ Right a
+
+runSuspender :: forall m a. (MonadRec m) => Suspender m a -> m a
+runSuspender s = tailRecM go s
+  where
+    go :: Suspender m a -> m (Either (Suspender m a) a)
+    go (Suspender a) = (either (\x -> Left $ x unit) (\x -> Right $ x)) <$> a
+
+liftSuspender :: forall m a. (Functor m) => m a -> Suspender m a
+liftSuspender m = Suspender (Right <$> m)
+
+newtype ContT r m a = ContT ((a -> Suspender m r) -> Suspender m r)
 
 runContT :: forall r m a. (MonadRec m) => ContT r m a -> (a -> m r) -> m r
-runContT (ContT ca) k = runSuspenderT $ ca (\a -> lift $ k a)
+runContT (ContT ca) k = runSuspender $ ca (\a -> liftSuspender $ k a)
 
 instance monadContContT :: (Monad m) => MonadCont (ContT r m) where
   callCC f = ContT (\k -> suspend (\_ -> case f (\a -> ContT (\_ -> suspend (\_ -> k a))) of ContT k2 -> k2 k))
@@ -33,7 +52,7 @@ instance bindContT :: (Monad m) => Bind (ContT r m) where
 instance monadContT :: (Monad m) => Monad (ContT r m)
 
 instance monadTransContT :: MonadTrans (ContT r) where
-  lift m = ContT ((lift m) >>=)
+  lift m = ContT (\k -> Suspender $ m >>= (\a -> unSuspender $ k a))
 
 instance monadRecContT :: (Monad m) => MonadRec (ContT r m) where
   tailRecM f a =
