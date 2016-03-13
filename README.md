@@ -1,4 +1,4 @@
-# purescript-cont-stack-safe
+# purescript-stackless-cont
 Stack-Safe Continuations for PureScript
 
 ![Left Binds Small](Benchmark/graphs/left-bind-small.png)
