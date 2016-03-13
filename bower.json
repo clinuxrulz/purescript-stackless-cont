@@ -1,5 +1,5 @@
 {
-  "name": "purescript-cont-stack-safe",
+  "name": "purescript-stackless-cont",
   "version": "0.1.1",
   "moduleType": [
     "node"
