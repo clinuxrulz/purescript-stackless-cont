@@ -1,13 +1,13 @@
-module Control.Monad.Cont.Trans.StackSafe
+module Control.Monad.Stackless.Cont.Trans
   ( ContT()
   , runContT
   ) where
 
-import Prelude
-import Control.Monad.Cont.Class
-import Control.Monad.Rec.Class
-import Control.Monad.Trans
-import Data.Either
+import Prelude (class Monad, class Bind, class Applicative, class Apply, class Functor, Unit, (>>=), ($), (<$>), unit, pure)
+import Control.Monad.Cont.Class (class MonadCont)
+import Control.Monad.Rec.Class (class MonadRec, tailRecM)
+import Control.Monad.Trans (class MonadTrans)
+import Data.Either (Either(Right, Left), either)
 
 newtype Suspender m a = Suspender (m (Either (Unit -> Suspender m a) a))
 

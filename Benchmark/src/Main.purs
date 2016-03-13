@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Cont.Trans.StackSafe
+import Control.Monad.Stackless.Cont.Trans
 import Control.Monad.Eff
 import Control.Monad.Free
 import Control.Monad.Trampoline
