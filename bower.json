@@ -15,5 +15,9 @@
     "purescript-transformers": "~0.8.4",
     "purescript-tailrec": "~0.3.1",
     "purescript-eff": "~0.1.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/clinuxrulz/purescript-stackless-cont.git"
   }
 }
