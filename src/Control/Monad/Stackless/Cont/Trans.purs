@@ -9,7 +9,7 @@ import Control.Monad.Rec.Class (class MonadRec, tailRecM)
 import Control.Monad.Trans (class MonadTrans, lift)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Reader.Class (class MonadReader, local, ask)
-import Control.Monad.Writer.Class (class MonadWriter, pass, listen, writer)
+import Control.Monad.State.Class (class MonadState, state)
 import Data.Either (Either(Right, Left), either)
 
 newtype Suspender m a = Suspender (m (Either (Unit -> Suspender m a) a))
@@ -74,3 +74,6 @@ instance monadEffContT :: (MonadEff eff m) => MonadEff eff (ContT r m) where
 instance monadReaderContT :: (MonadReader r1 m) => MonadReader r1 (ContT r2 m) where
   local f (ContT m) = ContT (\k -> suspend (\_ -> m (\a -> Suspender $ (local f) $ unSuspender $ k a)))
   ask = lift ask
+
+instance monadStateContT :: (MonadState s m) => MonadState s (ContT s m) where
+  state f = lift $ state f
