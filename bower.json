@@ -1,6 +1,6 @@
 {
   "name": "purescript-stackless-cont",
-  "version": "0.1.1",
+  "version": "0.0.1",
   "moduleType": [
     "node"
   ],
