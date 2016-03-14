@@ -1,6 +1,8 @@
 module Control.Monad.Stackless.Cont.Trans
   ( ContT()
   , runContT
+  , mapContT
+  , withContT
   ) where
 
 import Prelude (class Monad, class Bind, class Applicative, class Apply, class Functor, Unit, (>>=), ($), (<$>), unit, pure)
@@ -36,6 +38,22 @@ newtype ContT r m a = ContT ((a -> Suspender m r) -> Suspender m r)
 
 runContT :: forall r m a. (MonadRec m) => ContT r m a -> (a -> m r) -> m r
 runContT (ContT ca) k = runSuspender $ ca (\a -> liftSuspender $ k a)
+
+mapContT :: forall r m a. (MonadRec m) => (m r -> m r) -> ContT r m a -> ContT r m a
+mapContT f (ContT ca) = ContT (\k -> suspend (\_ -> ca (\a -> liftSuspender $ f (runSuspender $ k a))))
+
+kFromSuspender :: forall m a b. (MonadRec m) => (a -> Suspender m b) -> (a -> m b)
+kFromSuspender k = (\a -> runSuspender $ k a)
+
+kToSuspender :: forall m a b. (Functor m) => (a -> m b) -> (a -> Suspender m b)
+kToSuspender k = (\a -> liftSuspender $ k a)
+
+withContT :: forall r m a b. (MonadRec m) => ((b -> m r) -> (a -> m r)) -> ContT r m a -> ContT r m b
+withContT f (ContT ca) = ContT (\k ->
+  let k' = kToSuspender $ f $ kFromSuspender k
+  in
+  suspend (\_ -> ca (\a -> k' a))
+)
 
 instance monadContContT :: (Monad m) => MonadCont (ContT r m) where
   callCC f = ContT (\k -> suspend (\_ -> case f (\a -> ContT (\_ -> suspend (\_ -> k a))) of ContT k2 -> k2 k))
