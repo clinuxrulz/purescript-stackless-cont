@@ -6,7 +6,10 @@ module Control.Monad.Stackless.Cont.Trans
 import Prelude (class Monad, class Bind, class Applicative, class Apply, class Functor, Unit, (>>=), ($), (<$>), unit, pure)
 import Control.Monad.Cont.Class (class MonadCont)
 import Control.Monad.Rec.Class (class MonadRec, tailRecM)
-import Control.Monad.Trans (class MonadTrans)
+import Control.Monad.Trans (class MonadTrans, lift)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Reader.Class (class MonadReader, local, ask)
+import Control.Monad.Writer.Class (class MonadWriter, pass, listen, writer)
 import Data.Either (Either(Right, Left), either)
 
 newtype Suspender m a = Suspender (m (Either (Unit -> Suspender m a) a))
@@ -64,3 +67,10 @@ instance monadRecContT :: (Monad m) => MonadRec (ContT r m) where
           x
       )
     ))
+
+instance monadEffContT :: (MonadEff eff m) => MonadEff eff (ContT r m) where
+  liftEff m = lift $ liftEff m
+
+instance monadReaderContT :: (MonadReader r1 m) => MonadReader r1 (ContT r2 m) where
+  local f (ContT m) = ContT (\k -> suspend (\_ -> m (\a -> Suspender $ (local f) $ unSuspender $ k a)))
+  ask = lift ask
