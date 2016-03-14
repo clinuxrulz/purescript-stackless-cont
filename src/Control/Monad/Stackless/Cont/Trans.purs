@@ -34,11 +34,16 @@ runSuspender s = tailRecM go s
 liftSuspender :: forall m a. (Functor m) => m a -> Suspender m a
 liftSuspender m = Suspender (Right <$> m)
 
+-- | The CPS monad transformer. (The stackless version.)
+-- |
+-- | This monad transformer extends the base monad with the operation `callCC`.
 newtype ContT r m a = ContT ((a -> Suspender m r) -> Suspender m r)
 
+-- | Run a computation in the `ContT` monad, by providing a continuation.
 runContT :: forall r m a. (MonadRec m) => ContT r m a -> (a -> m r) -> m r
 runContT (ContT ca) k = runSuspender $ ca (\a -> liftSuspender $ k a)
 
+-- | Modify the underlying action in a `ContT` monad action.
 mapContT :: forall r m a. (MonadRec m) => (m r -> m r) -> ContT r m a -> ContT r m a
 mapContT f (ContT ca) = ContT (\k -> suspend (\_ -> ca (\a -> liftSuspender $ f (runSuspender $ k a))))
 
@@ -48,6 +53,7 @@ kFromSuspender k = (\a -> runSuspender $ k a)
 kToSuspender :: forall m a b. (Functor m) => (a -> m b) -> (a -> Suspender m b)
 kToSuspender k = (\a -> liftSuspender $ k a)
 
+-- | Modify the continuation in a `ContT` monad action.
 withContT :: forall r m a b. (MonadRec m) => ((b -> m r) -> (a -> m r)) -> ContT r m a -> ContT r m b
 withContT f (ContT ca) = ContT (\k ->
   let k' = kToSuspender $ f $ kFromSuspender k
