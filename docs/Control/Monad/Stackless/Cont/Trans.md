@@ -20,7 +20,8 @@ This monad transformer extends the base monad with the operation `callCC`.
 (Monad m) => Monad (ContT r m)
 MonadTrans (ContT r)
 (Monad m) => MonadRec (ContT r m)
-(MonadEff eff m) => MonadEff eff (ContT r m)
+(MonadEffect m) => MonadEffect (ContT r m)
+(MonadAsk r1 m) => MonadReader r1 (ContT r2 m)
 (MonadReader r1 m) => MonadReader r1 (ContT r2 m)
 (MonadState s m) => MonadState s (ContT s m)
 ```
