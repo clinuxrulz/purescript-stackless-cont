@@ -7,32 +7,35 @@ module Control.Monad.Stackless.Cont.Trans
 
 import Prelude (class Monad, class Bind, class Applicative, class Apply, class Functor, Unit, (>>=), ($), (<$>), unit, pure)
 import Control.Monad.Cont.Class (class MonadCont)
-import Control.Monad.Rec.Class (class MonadRec, tailRecM)
-import Control.Monad.Trans (class MonadTrans, lift)
-import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Reader.Class (class MonadReader, local, ask)
+import Control.Monad.Rec.Class (class MonadRec, Step(Loop, Done), tailRecM)
+import Control.Monad.Trans.Class (class MonadTrans, lift)
+import Effect.Class (class MonadEffect, liftEffect)
+import Control.Monad.Reader.Class (class MonadReader, class MonadAsk, local, ask)
 import Control.Monad.State.Class (class MonadState, state)
-import Data.Either (Either(Right, Left), either)
 
-newtype Suspender m a = Suspender (m (Either (Unit -> Suspender m a) a))
+eitherS :: forall a b c. (a -> c) -> (b -> c) -> Step a b -> c
+eitherS f _ (Loop a) = f a
+eitherS _ g (Done b) = g b
 
-unSuspender :: forall m a. Suspender m a -> m (Either (Unit -> Suspender m a) a)
+newtype Suspender m a = Suspender (m (Step (Unit -> Suspender m a) a))
+
+unSuspender :: forall m a. Suspender m a -> m (Step (Unit -> Suspender m a) a)
 unSuspender (Suspender a) = a
 
 suspend :: forall m a. (Applicative m) => (Unit -> Suspender m a) -> Suspender m a
-suspend f = Suspender $ pure $ Left f
+suspend f = Suspender $ pure $ Loop f
 
 done :: forall m a. (Applicative m) => a -> Suspender m a
-done a = Suspender $ pure $ Right a
+done a = Suspender $ pure $ Done a
 
 runSuspender :: forall m a. (MonadRec m) => Suspender m a -> m a
 runSuspender s = tailRecM go s
   where
-    go :: Suspender m a -> m (Either (Suspender m a) a)
-    go (Suspender a) = (either (\x -> Left $ x unit) (\x -> Right $ x)) <$> a
+    go :: Suspender m a -> m (Step (Suspender m a) a)
+    go (Suspender a) = (eitherS (\x -> Loop $ x unit) (\x -> Done $ x)) <$> a
 
 liftSuspender :: forall m a. (Functor m) => m a -> Suspender m a
-liftSuspender m = Suspender (Right <$> m)
+liftSuspender m = Suspender (Done <$> m)
 
 -- | The CPS monad transformer. (The stackless version.)
 -- |
@@ -85,19 +88,21 @@ instance monadRecContT :: (Monad m) => MonadRec (ContT r m) where
   tailRecM f a =
     f a >>= (\x -> ContT (\k ->
       suspend (\_ ->
-        either
+        eitherS
           (\y -> case tailRecM f y of ContT k2 -> k2 k)
           (\y -> k y)
           x
       )
     ))
 
-instance monadEffContT :: (MonadEff eff m) => MonadEff eff (ContT r m) where
-  liftEff m = lift $ liftEff m
+instance monadEffectContT :: (MonadEffect m) => MonadEffect (ContT r m) where
+  liftEffect m = lift $ liftEffect m
 
+instance monadAskContT :: (MonadAsk r1 m) => MonadAsk r1 (ContT r2 m) where
+  ask = lift ask
+  
 instance monadReaderContT :: (MonadReader r1 m) => MonadReader r1 (ContT r2 m) where
   local f (ContT m) = ContT (\k -> suspend (\_ -> m (\a -> Suspender $ (local f) $ unSuspender $ k a)))
-  ask = lift ask
 
 instance monadStateContT :: (MonadState s m) => MonadState s (ContT s m) where
   state f = lift $ state f
